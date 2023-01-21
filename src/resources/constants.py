@@ -1,0 +1,3 @@
+DEFAULTS = {
+    "nicknameTemplate": "{smart-name}"
+}
