@@ -51,7 +51,7 @@ class Route:
             roblox_username = roblox_account.get("name")
             roblox_display_name = roblox_account.get("displayName")
 
-            if not group_data:
+            if not group_id:
                 guild_data: GuildData = await fetch_guild_data(str(guild_id), "binds")
                 group_id = (
                     any(b["bind"]["type"] == "group" for b in guild_data.binds) if guild_data.binds else None
