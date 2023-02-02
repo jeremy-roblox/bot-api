@@ -1,6 +1,7 @@
 from sanic.response import json
 from resources.constants import DEFAULTS
 from resources.database import fetch_guild_data
+from resources.models import GuildData
 import re
 import datetime
 
@@ -63,8 +64,9 @@ class Route:
         is_nickname = json_body.get("is_nickname") or True
 
         # Group placholder values
+        # group_data should reflect a V2 groups api response for a singular group.
+        group = json_body.get("group_data") or None
         group_id = None
-        group = None
 
         if template == "{disable-nicknaming}":
             return json({"success": True, "nickname": None})
@@ -72,6 +74,17 @@ class Route:
         if roblox_account:
             roblox_username = roblox_account.get("name")
             roblox_display_name = roblox_account.get("displayName")
+
+            if not group:
+                guild_data: GuildData = await fetch_guild_data(str(guild_id), "binds")
+                group_id = (
+                    any(b["bind"]["type"] == "group" for b in guild_data.binds) if guild_data.binds else None
+                )
+
+                if group_id:
+                    group = roblox_account.get("groupsv2").get(group_id)
+
+            group_role = group.get("role").get("name")
 
             if "smart-name" in template:
                 smart_name = f"{roblox_display_name} (@{roblox_username})"
@@ -85,6 +98,7 @@ class Route:
                 .replace("smart-name", smart_name)
                 .replace("roblox-id", str(roblox_account.get("id")))
                 .replace("roblox-age", str(roblox_account.get("age_days")))
+                .replace("group-rank", group_role)
             )
         else:
             # Unverified users
@@ -97,6 +111,8 @@ class Route:
                 return json({"success": True, "nickname": None})
 
         template = self.parse_capitalization(template)
+
+        return json({"success": True, "nickname": template[:32] if is_nickname else template})
 
     def parse_capitalization(self, template: str) -> str:
         for outer_nick in nickname_template_regex.findall(template):
