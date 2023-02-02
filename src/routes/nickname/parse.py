@@ -36,14 +36,13 @@ class Route:
         template = json_body.get("template") or DEFAULTS.get("nicknameTemplate") or ""
 
         # Determines if result should be limited to 32 characters or not
-        is_nickname = json_body.get("is_nickname") or True
+        is_nickname = json_body.get("is_nickname")
+        if not is_nickname:
+            is_nickname = True
 
-        # Group placholder values
-        # group_data is expected to return a groups api V2 response.
-        # If multiple groups are passed to group_data, a group_id value is required,
-        # if no group_id is passed, no {group-rank} matching will be performed.
-        group_data = json_body.get("group_data") or None
-        group_id = json_body.get("group_id") or None
+        # Group placeholder values
+        group_data = roblox_account.get("groupsv2")
+        group_id = json_body.get("group_id")
 
         if template == "{disable-nicknaming}":
             return json({"success": True, "nickname": None})
