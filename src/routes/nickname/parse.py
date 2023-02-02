@@ -3,7 +3,6 @@ from resources.constants import DEFAULTS
 from resources.database import fetch_guild_data
 from resources.models import GuildData
 import re
-import datetime
 
 nickname_template_regex = re.compile(r"\{(.*?)\}")
 any_group_nickname = re.compile(r"\{group-rank-(.*?)\}")
@@ -35,7 +34,7 @@ class Route:
 
         # Determines if result should be limited to 32 characters or not
         is_nickname = json_body.get("is_nickname")
-        if not is_nickname:
+        if is_nickname is None:
             is_nickname = True
 
         # Group placeholder values
