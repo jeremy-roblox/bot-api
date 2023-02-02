@@ -60,7 +60,7 @@ class Route:
                     None,
                 )
 
-            linked_group = roblox_account.get("groupsv2").get(group_id) if group_id else None
+            linked_group = roblox_account.get("groupsv2").get(str(group_id)) if group_id else None
             group_rank = linked_group.get("role").get("name") if linked_group else "Guest"
 
             smart_name = ""
