@@ -18,8 +18,6 @@ class Route:
 
         # Uncompleted Templates:
         #   X-{roblox-join-date} (Commented out in bloxlink-http)
-        #
-        #   {guilded-mention} (Mentioning users is not possible through normal msgs in Guilded)
 
         # Discord/Guilded user data
         # Expected data is a dict w/ the vals: "name", "nick", & "id"
@@ -98,6 +96,7 @@ class Route:
             .replace("discord-id", str(user_data.get("id")))
             .replace("guilded-name", str(user_data.get("name")))
             .replace("guilded-nick", str(user_data.get("nick")))
+            .replace("guilded-mention", f"@{user_data.get('name')}")
             .replace("guilded-id", str(user_data.get("id")))
             .replace("group-url", f"https://www.roblox.com/groups/{group_id}" if group_id else "")
             .replace("group-name", str(linked_group.get("group").get("name")) if linked_group else "")
