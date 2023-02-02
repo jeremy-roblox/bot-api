@@ -74,12 +74,12 @@ class Route:
                 template = template.replace(f"group-rank-{multi_group_id}", multi_group_role)
 
             template = (
-                template.replace("roblox-name", roblox_username)
-                .replace("display-name", roblox_display_name)
-                .replace("smart-name", smart_name)
+                template.replace("roblox-name", str(roblox_username))
+                .replace("display-name", str(roblox_display_name))
+                .replace("smart-name", str(smart_name))
                 .replace("roblox-id", str(roblox_account.get("id")))
                 .replace("roblox-age", str(roblox_account.get("age_days")))
-                .replace("group-rank", group_rank)
+                .replace("group-rank", str(group_rank))
             )
         else:
             # Unverified users
@@ -92,17 +92,17 @@ class Route:
                 return json({"success": True, "nickname": None})
 
         template = (
-            template.replace("discord-name", user_data.get("name"))
-            .replace("discord-nick", user_data.get("nick"))
+            template.replace("discord-name", str(user_data.get("name")))
+            .replace("discord-nick", str(user_data.get("nick")))
             .replace("discord-mention", f"<@{user_data.get('id')}>")
             .replace("discord-id", str(user_data.get("id")))
-            .replace("guilded-name", user_data.get("name"))
-            .replace("guilded-nick", user_data.get("nick"))
-            .replace("guilded-id", user_data.get("id"))
+            .replace("guilded-name", str(user_data.get("name")))
+            .replace("guilded-nick", str(user_data.get("nick")))
+            .replace("guilded-id", str(user_data.get("id")))
             .replace("group-url", f"https://www.roblox.com/groups/{group_id}" if group_id else "")
-            .replace("group-name", group_data.get("group").get("name") if group_data else "")
+            .replace("group-name", str(linked_group.get("group").get("name")) if linked_group else "")
             .replace("prefix", "/")
-            .replace("server-name", guild_name)
+            .replace("server-name", str(guild_name))
         )
 
         template = self.parse_capitalization(template)
