@@ -16,41 +16,16 @@ class Route:
     async def handler(self, request):
         json_body = request.json or {}
 
-        # Requirements
-        # ---
-        # Code has to have feature parity with the old code, along with ability to handle guilded-related requests
-        # It does not need to validate between being for guilded or discord, just proper data needs to be output.
-        # ---
-        # Templates:
-        #   {disable-nicknaming}
-        #   {prefix}
-        #   {server-name}
+        # Uncompleted Templates:
+        #   X-{roblox-join-date} (Commented out in bloxlink-http)
         #
-        #   {smart-name}
-        #   {roblox-name}
-        #   {display-name}
-        #   {roblox-id}
-        #   {roblox-age}
-        #   X-{roblox-join-date}
-        #
-        #   {group-rank-id}
-        #   {group-rank}
-        #   {group-name}
-        #   {group-url}
-        #
-        #   {discord-name}/{guilded-name}
-        #   {discord-nick}/{guilded-nick}
-        #   {discord-mention}/{guilded-mention}
-        #   {discord-id}/{guilded-id}
+        #   {guilded-mention} (Mentioning users is not possible through normal msgs in Guilded)
 
         # Discord/Guilded user data
-        # Minimum data needed: name, nickname, user id
-        #
-        # I think expected data should be a dict w/ the vals: "name", "nick", & "id"
-        # This should work for both sides, just needs to be set accordingly when sending.
+        # Expected data is a dict w/ the vals: "name", "nick", & "id"
         user_data = json_body.get("user_data")
 
-        # Only need a guild id and a guild name
+        # Only need a guild id and a guild name for guild-related data.
         guild_id = json_body.get("guild_id")
         guild_name = json_body.get("guild_name")
 
@@ -64,9 +39,11 @@ class Route:
         is_nickname = json_body.get("is_nickname") or True
 
         # Group placholder values
-        # group_data should reflect a V2 groups api response for a singular group.
-        group = json_body.get("group_data") or None
-        group_id = None
+        # group_data is expected to return a groups api V2 response.
+        # If multiple groups are passed to group_data, a group_id value is required,
+        # if no group_id is passed, no {group-rank} matching will be performed.
+        group_data = json_body.get("group_data") or None
+        group_id = json_body.get("group_id") or None
 
         if template == "{disable-nicknaming}":
             return json({"success": True, "nickname": None})
@@ -75,16 +52,14 @@ class Route:
             roblox_username = roblox_account.get("name")
             roblox_display_name = roblox_account.get("displayName")
 
-            if not group:
+            if not group_data:
                 guild_data: GuildData = await fetch_guild_data(str(guild_id), "binds")
                 group_id = (
                     any(b["bind"]["type"] == "group" for b in guild_data.binds) if guild_data.binds else None
                 )
 
-                if group_id:
-                    group = roblox_account.get("groupsv2").get(group_id)
-
-            group_role = group.get("role").get("name")
+            linked_group = roblox_account.get("groupsv2").get(group_id) if group_id else None
+            group_rank = linked_group.get("role").get("name") if linked_group else "Guest"
 
             if "smart-name" in template:
                 smart_name = f"{roblox_display_name} (@{roblox_username})"
@@ -92,13 +67,20 @@ class Route:
                 if roblox_username == roblox_display_name or len(smart_name) > 32:
                     smart_name = roblox_username
 
+            # Handles {group-rank-<ID>}
+            for multi_group_id in any_group_nickname.findall(template):
+                current_group = group_data.get(multi_group_id)
+                multi_group_role = current_group.get("role").get("name") if current_group else "Guest"
+
+                template = template.replace(f"group-rank-{multi_group_id}", multi_group_role)
+
             template = (
                 template.replace("roblox-name", roblox_username)
                 .replace("display-name", roblox_display_name)
                 .replace("smart-name", smart_name)
                 .replace("roblox-id", str(roblox_account.get("id")))
                 .replace("roblox-age", str(roblox_account.get("age_days")))
-                .replace("group-rank", group_role)
+                .replace("group-rank", group_rank)
             )
         else:
             # Unverified users
@@ -109,6 +91,20 @@ class Route:
 
             if template == "{disable-nicknaming}":
                 return json({"success": True, "nickname": None})
+
+        template = (
+            template.replace("discord-name", user_data.get("name"))
+            .replace("discord-nick", user_data.get("nick"))
+            .replace("discord-mention", f"<@{user_data.get('id')}>")
+            .replace("discord-id", str(user_data.get("id")))
+            .replace("guilded-name", user_data.get("name"))
+            .replace("guilded-nick", user_data.get("nick"))
+            .replace("guilded-id", user_data.get("id"))
+            .replace("group-url", f"https://www.roblox.com/groups/{group_id}" if group_id else "")
+            .replace("group-name", group_data.get("group").get("name") if group_data else "")
+            .replace("prefix", "/")
+            .replace("server-name", guild_name)
+        )
 
         template = self.parse_capitalization(template)
 
