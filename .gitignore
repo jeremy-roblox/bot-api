@@ -132,3 +132,5 @@ run.py
 
 #VSCode Dev container folder.
 .devcontainer/
+
+src/config.py
