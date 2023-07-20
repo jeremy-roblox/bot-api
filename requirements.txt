@@ -8,3 +8,4 @@ hiredis
 redis>=4.2.0rc1
 pymongo[srv]
 requests
+websockets<11.0
