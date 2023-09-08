@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "bot-api"
+version = "0.1.0"
+description = ""
+authors = ["Bloxlink <admin@blox.link>"]
+license = "AGPL 3.0"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+cchardet = "2.1.7"
+aiodns = "3.0.0"
+sanic = "22.3.2"
+pillow = "9.1.1"
+aiohttp = "3.8.1"
+motor = "2.5.1"
+hiredis = "^2.2.3"
+redis = ">=4.2.0"
+pymongo = { extras = ["srv"], version = "^3.12" }
+requests = "^2.31.0"
+websockets = "<11.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.7.0"
+isort = "^5.12.0"
+
+[tool.black]
+line_length = "110"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
