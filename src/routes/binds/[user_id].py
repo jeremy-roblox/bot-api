@@ -1,13 +1,14 @@
 from sanic.response import json
+
+from resources.constants import DEFAULTS
 from resources.database import fetch_guild_data
 from resources.models import GuildData
-from resources.constants import DEFAULTS
 from resources.utils import find
 
 
 class Route:
     PATH = "/binds/<user_id>/"
-    METHODS = ("POST", )
+    METHODS = ("POST",)
 
     def flatten_binds(self, role_binds: list) -> list:
         all_binds: list = []
@@ -21,7 +22,7 @@ class Route:
         return all_binds
 
     def has_custom_verified_roles(self, role_binds: list) -> tuple[bool, bool]:
-        has_verified_role:   bool = False
+        has_verified_role: bool = False
         has_unverified_role: bool = False
 
         all_binds: list = self.flatten_binds(role_binds)
@@ -35,13 +36,25 @@ class Route:
         return has_verified_role, has_unverified_role
 
     async def get_default_verified_role(self, guild: dict) -> tuple[str, str]:
-        guild_data: GuildData = await fetch_guild_data(guild["id"], "verifiedRoleEnabled", "verifiedRole", "verifiedRoleName", "unverifiedRoleEnabled", "unverifiedRole", "unverifiedRoleName")
+        guild_data: GuildData = await fetch_guild_data(
+            guild["id"],
+            "verifiedRoleEnabled",
+            "verifiedRole",
+            "verifiedRoleName",
+            "unverifiedRoleEnabled",
+            "unverifiedRole",
+            "unverifiedRoleName",
+        )
 
-        verified_role:   str | None = None
+        verified_role: str | None = None
         unverified_role: str | None = None
 
-        verified_role_name:   str | None  = None if guild_data.verifiedRole else guild_data.verifiedRoleName or "Verified"
-        unverified_role_name: str | None  = None if guild_data.unverifiedRole else guild_data.unverifiedRoleName or "Unverified"
+        verified_role_name: str | None = (
+            None if guild_data.verifiedRole else guild_data.verifiedRoleName or "Verified"
+        )
+        unverified_role_name: str | None = (
+            None if guild_data.unverifiedRole else guild_data.unverifiedRoleName or "Unverified"
+        )
 
         if guild_data.verifiedRoleEnabled or guild_data.unverifiedRoleEnabled:
             for role in filter(lambda r: not r["managed"], guild["roles"]):
@@ -52,15 +65,16 @@ class Route:
 
         return verified_role, unverified_role
 
-
-    async def check_bind_for(self, guild_roles: list[dict], roblox_account: dict, bind_type: str, bind_id: int, **bind_data):
-        bind_roles:   set  = set()
-        remove_roles: set  = set()
+    async def check_bind_for(
+        self, guild_roles: list[dict], roblox_account: dict, bind_type: str, bind_id: int, **bind_data
+    ):
+        bind_roles: set = set()
+        remove_roles: set = set()
 
         bind_explanations: dict[str, list] = {"success": [], "failure": []}
 
         success: bool = False
-        entire_group_bind: bool = "roles" not in bind_data # find a role matching their roleset
+        entire_group_bind: bool = "roles" not in bind_data  # find a role matching their roleset
 
         if bind_type == "group":
             if roblox_account:
@@ -72,22 +86,32 @@ class Route:
 
                         if bind_roleset < 0 and abs(bind_roleset) <= user_group["role"]["rank"]:
                             success = True
-                            bind_explanations["success"].append(f"Your rank is equal to or greater than {bind_roleset}.")
+                            bind_explanations["success"].append(
+                                f"Your rank is equal to or greater than {bind_roleset}."
+                            )
                         else:
-                            bind_explanations["failure"].append(f"This bind requires your rank, {user_group['role']['rank']}, to be higher than {bind_roleset}.")
+                            bind_explanations["failure"].append(
+                                f"This bind requires your rank, {user_group['role']['rank']}, to be higher than {bind_roleset}."
+                            )
 
                         if bind_roleset == user_group["role"]["rank"]:
                             success = True
                             bind_explanations["success"].append(f"Your rank is equal to {bind_roleset}.")
                         else:
-                            bind_explanations["failure"].append(f"This bind requires your rank, {user_group['role']['rank']}, to be equal to {bind_roleset}.")
+                            bind_explanations["failure"].append(
+                                f"This bind requires your rank, {user_group['role']['rank']}, to be equal to {bind_roleset}."
+                            )
 
                     elif bind_data.get("min") and bind_data.get("max"):
                         if int(bind_data["min"]) <= user_group["role"]["rank"] <= int(bind_data["max"]):
                             success = True
-                            bind_explanations["success"].append(f"Your rank is between {bind_data['min']} and {bind_data['max']}.")
+                            bind_explanations["success"].append(
+                                f"Your rank is between {bind_data['min']} and {bind_data['max']}."
+                            )
                         else:
-                            bind_explanations["failure"].append(f"This bind requires your rank to be between {bind_data['min']} and {bind_data['max']}; however, your rank is {user_group['role']['rank']}.")
+                            bind_explanations["failure"].append(
+                                f"This bind requires your rank to be between {bind_data['min']} and {bind_data['max']}; however, your rank is {user_group['role']['rank']}."
+                            )
 
                     # elif bind_data.get("everyone"):
                     #     success = True
@@ -101,8 +125,9 @@ class Route:
                         success = True
                         bind_explanations["success"].append("You are not in this group.")
                     else:
-                        bind_explanations["failure"].append(f"This bind requires you to be in the group {bind_id}.")
-
+                        bind_explanations["failure"].append(
+                            f"This bind requires you to be in the group {bind_id}."
+                        )
 
         elif bind_type in ("verified", "unverified"):
             if bind_type == "verified" and roblox_account:
@@ -120,7 +145,9 @@ class Route:
 
         if success:
             if entire_group_bind and not (roblox_account and user_group):
-                raise RuntimeError("Bad bind: this bind must have roles if the user does not have a Roblox account.")
+                raise RuntimeError(
+                    "Bad bind: this bind must have roles if the user does not have a Roblox account."
+                )
 
             # add in the remove roles
             if bind_data.get("removeRoles"):
@@ -148,10 +175,7 @@ class Route:
             if bind_data.get("roles"):
                 bind_roles.update(bind_data["roles"])
 
-
-
         return success, bind_roles, remove_roles, bind_explanations
-
 
     async def handler(self, request, user_id):
         json_data: dict = request.json or {}
@@ -174,36 +198,51 @@ class Route:
 
         for bind_data in role_binds:
             # bind_nickname     = bind_data.get("nickname") or None
-            role_bind: dict      = bind_data.get("bind") or {}
-            bind_required: bool  = not bind_data.get("optional", False)
+            role_bind: dict = bind_data.get("bind") or {}
+            bind_required: bool = not bind_data.get("optional", False)
 
-            bind_type: str         = role_bind.get("type")
-            bind_id:   str | None  = role_bind.get("id") or None
-            bind_criteria: list  = role_bind.get("criteria") or []
+            bind_type: str = role_bind.get("type")
+            bind_id: str | None = role_bind.get("id") or None
+            bind_criteria: list = role_bind.get("criteria") or []
 
             bind_success: bool = None
             bind_roles: list = []
             bind_remove_roles: list = []
 
-            criteria_add_roles: set = set() # keep track of roles from the criteria
-            criteria_remove_roles: set = set() # keep track of roles from the criteria
+            criteria_add_roles: set = set()  # keep track of roles from the criteria
+            criteria_remove_roles: set = set()  # keep track of roles from the criteria
 
             if bind_criteria:
-                criteria_explanations: dict[str, list | str] = {"criteriaType": bind_type, "success": [], "failure": []}
+                criteria_explanations: dict[str, list | str] = {
+                    "criteriaType": bind_type,
+                    "success": [],
+                    "failure": [],
+                }
 
                 for criterion in bind_criteria:
                     try:
-                        criterion_success, criterion_roles, criterion_remove_roles, criterion_explanations = await self.check_bind_for(guild, roblox_account, criterion["type"], criterion["id"], **bind_data, **criterion)
+                        (
+                            criterion_success,
+                            criterion_roles,
+                            criterion_remove_roles,
+                            criterion_explanations,
+                        ) = await self.check_bind_for(
+                            guild,
+                            roblox_account,
+                            criterion["type"],
+                            criterion["id"],
+                            **bind_data,
+                            **criterion,
+                        )
                     except RuntimeError as e:
-                        return json({
-                            "success": False,
-                            "error": e
-                        }, status=400)
+                        return json({"success": False, "error": e}, status=400)
 
                     if bind_type == "requireAll":
                         if bind_success is None and criterion_success is True:
                             bind_success = True
-                        elif (bind_success is True and criterion_success is False) or (bind_success is None and criterion_success is False):
+                        elif (bind_success is True and criterion_success is False) or (
+                            bind_success is None and criterion_success is False
+                        ):
                             bind_success = False
 
                         if criterion_success:
@@ -218,23 +257,32 @@ class Route:
 
             else:
                 try:
-                    bind_success, bind_roles, bind_remove_roles, bind_explanations = await self.check_bind_for(guild["roles"], roblox_account, bind_type, bind_id, **role_bind, **bind_data)
+                    (
+                        bind_success,
+                        bind_roles,
+                        bind_remove_roles,
+                        bind_explanations,
+                    ) = await self.check_bind_for(
+                        guild["roles"], roblox_account, bind_type, bind_id, **role_bind, **bind_data
+                    )
                 except RuntimeError:
-                    return json({
-                        "success": False,
-                        "error": e
-                    }, status=400)
+                    return json({"success": False, "error": e}, status=400)
 
                 if bind_explanations:
                     user_binds["explanations"]["success"] += bind_explanations["success"]
                     user_binds["explanations"]["failure"] += bind_explanations["failure"]
 
             if bind_success:
-                append_roles = list(criteria_add_roles or bind_roles) # whether we append all roles from the criteria or just from the one bind
-                remove_roles = list(criteria_remove_roles or bind_remove_roles) # whether we append all roles from the criteria or just from the one bind
+                append_roles = list(
+                    criteria_add_roles or bind_roles
+                )  # whether we append all roles from the criteria or just from the one bind
+                remove_roles = list(
+                    criteria_remove_roles or bind_remove_roles
+                )  # whether we append all roles from the criteria or just from the one bind
 
-                user_binds["required" if bind_required else "optional"].append([bind_data, append_roles, remove_roles, bind_data.get("nickname")])
-
+                user_binds["required" if bind_required else "optional"].append(
+                    [bind_data, append_roles, remove_roles, bind_data.get("nickname")]
+                )
 
         # for when they didn't save their own [un]verified roles
         has_verified_role, has_unverified_role = self.has_custom_verified_roles(role_binds)
@@ -244,12 +292,27 @@ class Route:
             verified_role, unverified_role = await self.get_default_verified_role(guild)
 
             if not has_verified_role and verified_role and roblox_account:
-                user_binds["required"].append([{"type": "verified"}, [str(verified_role["id"])], [str(unverified_role["id"])] if unverified_role and unverified_role["id"] in member["roles"] else [], default_nickname_template])
+                user_binds["required"].append(
+                    [
+                        {"type": "verified"},
+                        [str(verified_role["id"])],
+                        [str(unverified_role["id"])]
+                        if unverified_role and unverified_role["id"] in member["roles"]
+                        else [],
+                        default_nickname_template,
+                    ]
+                )
 
             if not has_unverified_role and unverified_role and not roblox_account:
-                user_binds["required"].append([{"type": "unverified"}, [str(unverified_role["id"])], [str(verified_role["id"])] if verified_role and verified_role["id"] in member["roles"] else [], None])
+                user_binds["required"].append(
+                    [
+                        {"type": "unverified"},
+                        [str(unverified_role["id"])],
+                        [str(verified_role["id"])]
+                        if verified_role and verified_role["id"] in member["roles"]
+                        else [],
+                        None,
+                    ]
+                )
 
-        return json({
-            "success": True,
-            "binds": user_binds
-        })
+        return json({"success": True, "binds": user_binds})

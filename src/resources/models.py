@@ -1,5 +1,6 @@
-from dataclasses import dataclass, field
 import copy
+from dataclasses import dataclass, field
+
 from resources.constants import DEFAULTS
 
 __all__ = (
@@ -7,6 +8,7 @@ __all__ = (
     "GuildData",
     "RobloxAccount",
 )
+
 
 def default_field(obj):
     return field(default_factory=lambda: copy.copy(obj))
@@ -16,20 +18,20 @@ def default_field(obj):
 class UserData:
     id: int
     robloxID: str = None
-    robloxAccounts: dict = default_field({"accounts":[], "guilds": {}})
+    robloxAccounts: dict = default_field({"accounts": [], "guilds": {}})
 
 
 @dataclass(slots=True)
 class GuildData:
     id: int
-    binds: list = default_field([]) # FIXME
+    binds: list = default_field([])  # FIXME
 
     verifiedRoleEnabled: bool = True
-    verifiedRoleName: str = "Verified" # deprecated
+    verifiedRoleName: str = "Verified"  # deprecated
     verifiedRole: str = None
 
     unverifiedRoleEnabled: bool = True
-    unverifiedRoleName: str = "Unverified" # deprecated
+    unverifiedRoleName: str = "Unverified"  # deprecated
     unverifiedRole: str = None
 
     nicknameTemplate: str = DEFAULTS.get("nicknameTemplate")

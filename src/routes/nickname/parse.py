@@ -1,8 +1,10 @@
+import re
+
 from sanic.response import json
+
 from resources.constants import DEFAULTS
 from resources.database import fetch_guild_data
 from resources.models import GuildData
-import re
 
 nickname_template_regex = re.compile(r"\{(.*?)\}")
 any_group_nickname = re.compile(r"\{group-rank-(.*?)\}")

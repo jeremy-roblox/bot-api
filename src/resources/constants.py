@@ -1,3 +1,1 @@
-DEFAULTS = {
-    "nicknameTemplate": "{smart-name}"
-}
+DEFAULTS = {"nicknameTemplate": "{smart-name}"}

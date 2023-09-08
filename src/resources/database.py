@@ -1,11 +1,19 @@
+import asyncio
+from os.path import exists
 from typing import Callable
+
 from motor.motor_asyncio import AsyncIOMotorClient
 from redis.asyncio import Redis as Redis
-from os.path import exists
-import asyncio
-from .secrets import MONGO_URL, MONGO_CA_FILE, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_URL
-from .models import UserData, GuildData
 
+from .models import GuildData, UserData
+from .secrets import (
+    MONGO_CA_FILE,
+    MONGO_URL,
+    REDIS_HOST,
+    REDIS_PASSWORD,
+    REDIS_PORT,
+    REDIS_URL,
+)
 
 mongo: AsyncIOMotorClient = None
 redis: Redis = None
@@ -45,11 +53,13 @@ async def fetch_item(domain: str, constructor: Callable, item_id: str, *aspects)
         item = await redis.hgetall(f"{domain}:{item_id}")
 
     if not item:
-        item = await mongo.bloxlink[domain].find_one({"_id": item_id}, {x:True for x in aspects}) or {"_id": item_id}
+        item = await mongo.bloxlink[domain].find_one({"_id": item_id}, {x: True for x in aspects}) or {
+            "_id": item_id
+        }
 
         if item and not isinstance(item, (list, dict)):
             if aspects:
-                items = {x:item[x] for x in aspects if item.get(x) and not isinstance(item[x], dict)}
+                items = {x: item[x] for x in aspects if item.get(x) and not isinstance(item[x], dict)}
                 if items:
                     await redis.hset(f"{domain}:{item_id}", items)
             else:
@@ -61,6 +71,7 @@ async def fetch_item(domain: str, constructor: Callable, item_id: str, *aspects)
     item["id"] = item_id
 
     return constructor(**item)
+
 
 async def update_item(domain: str, item_id: str, **aspects) -> None:
     """
@@ -80,6 +91,7 @@ async def update_item(domain: str, item_id: str, **aspects) -> None:
     # update database
     await mongo.bloxlink[domain].update_one({"_id": item_id}, {"$set": aspects}, upsert=True)
 
+
 async def fetch_user_data(user: str | dict, *aspects) -> UserData:
     """
     Fetch a full user from local cache, then redis, then database.
@@ -92,6 +104,7 @@ async def fetch_user_data(user: str | dict, *aspects) -> UserData:
         user_id = str(user)
 
     return await fetch_item("users", UserData, user_id, *aspects)
+
 
 async def fetch_guild_data(guild: str | dict, *aspects) -> GuildData:
     """
@@ -106,6 +119,7 @@ async def fetch_guild_data(guild: str | dict, *aspects) -> GuildData:
 
     return await fetch_item("guilds", GuildData, guild_id, *aspects)
 
+
 async def update_user_data(user: str | dict, **aspects) -> None:
     """
     Update a user's aspects in local cache, redis, and database.
@@ -117,6 +131,7 @@ async def update_user_data(user: str | dict, **aspects) -> None:
         user_id = str(user)
 
     return await update_item("users", user_id, **aspects)
+
 
 async def update_guild_data(guild: str | dict, **aspects) -> None:
     """
