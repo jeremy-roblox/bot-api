@@ -194,95 +194,98 @@ class Route:
             "explanations": {"success": [], "failure": [], "criteria": []},
         }
 
+        is_restricted = json_data.get("restricted", False)
+
         default_nickname_template = guild_data.nicknameTemplate or DEFAULTS.get("nicknameTemplate")
 
-        for bind_data in role_binds:
-            # bind_nickname     = bind_data.get("nickname") or None
-            role_bind: dict = bind_data.get("bind") or {}
-            bind_required: bool = not bind_data.get("optional", False)
+        if not is_restricted:
+            for bind_data in role_binds:
+                # bind_nickname     = bind_data.get("nickname") or None
+                role_bind: dict = bind_data.get("bind") or {}
+                bind_required: bool = not bind_data.get("optional", False)
 
-            bind_type: str = role_bind.get("type")
-            bind_id: str | None = role_bind.get("id") or None
-            bind_criteria: list = role_bind.get("criteria") or []
+                bind_type: str = role_bind.get("type")
+                bind_id: str | None = role_bind.get("id") or None
+                bind_criteria: list = role_bind.get("criteria") or []
 
-            bind_success: bool = None
-            bind_roles: list = []
-            bind_remove_roles: list = []
+                bind_success: bool = None
+                bind_roles: list = []
+                bind_remove_roles: list = []
 
-            criteria_add_roles: set = set()  # keep track of roles from the criteria
-            criteria_remove_roles: set = set()  # keep track of roles from the criteria
+                criteria_add_roles: set = set()  # keep track of roles from the criteria
+                criteria_remove_roles: set = set()  # keep track of roles from the criteria
 
-            if bind_criteria:
-                criteria_explanations: dict[str, list | str] = {
-                    "criteriaType": bind_type,
-                    "success": [],
-                    "failure": [],
-                }
+                if bind_criteria:
+                    criteria_explanations: dict[str, list | str] = {
+                        "criteriaType": bind_type,
+                        "success": [],
+                        "failure": [],
+                    }
 
-                for criterion in bind_criteria:
+                    for criterion in bind_criteria:
+                        try:
+                            (
+                                criterion_success,
+                                criterion_roles,
+                                criterion_remove_roles,
+                                criterion_explanations,
+                            ) = await self.check_bind_for(
+                                guild,
+                                roblox_account,
+                                criterion["type"],
+                                criterion["id"],
+                                **bind_data,
+                                **criterion,
+                            )
+                        except RuntimeError as e:
+                            return json({"success": False, "error": e}, status=400)
+
+                        if bind_type == "requireAll":
+                            if bind_success is None and criterion_success is True:
+                                bind_success = True
+                            elif (bind_success is True and criterion_success is False) or (
+                                bind_success is None and criterion_success is False
+                            ):
+                                bind_success = False
+
+                            if criterion_success:
+                                criteria_add_roles.update(criterion_roles)
+                                criteria_remove_roles.update(criterion_remove_roles)
+                                criteria_explanations["success"] += criterion_explanations["success"]
+                            else:
+                                criteria_explanations["failure"] += criterion_explanations["failure"]
+                                # break
+
+                    user_binds["explanations"]["criteria"].append(criteria_explanations)
+
+                else:
                     try:
                         (
-                            criterion_success,
-                            criterion_roles,
-                            criterion_remove_roles,
-                            criterion_explanations,
+                            bind_success,
+                            bind_roles,
+                            bind_remove_roles,
+                            bind_explanations,
                         ) = await self.check_bind_for(
-                            guild,
-                            roblox_account,
-                            criterion["type"],
-                            criterion["id"],
-                            **bind_data,
-                            **criterion,
+                            guild["roles"], roblox_account, bind_type, bind_id, **role_bind, **bind_data
                         )
-                    except RuntimeError as e:
+                    except RuntimeError:
                         return json({"success": False, "error": e}, status=400)
 
-                    if bind_type == "requireAll":
-                        if bind_success is None and criterion_success is True:
-                            bind_success = True
-                        elif (bind_success is True and criterion_success is False) or (
-                            bind_success is None and criterion_success is False
-                        ):
-                            bind_success = False
+                    if bind_explanations:
+                        user_binds["explanations"]["success"] += bind_explanations["success"]
+                        user_binds["explanations"]["failure"] += bind_explanations["failure"]
 
-                        if criterion_success:
-                            criteria_add_roles.update(criterion_roles)
-                            criteria_remove_roles.update(criterion_remove_roles)
-                            criteria_explanations["success"] += criterion_explanations["success"]
-                        else:
-                            criteria_explanations["failure"] += criterion_explanations["failure"]
-                            # break
+                if bind_success:
+                    append_roles = list(
+                        criteria_add_roles or bind_roles
+                    )  # whether we append all roles from the criteria or just from the one bind
+                    remove_roles = list(
+                        criteria_remove_roles or bind_remove_roles
+                    )  # whether we append all roles from the criteria or just from the one bind
 
-                user_binds["explanations"]["criteria"].append(criteria_explanations)
-
-            else:
-                try:
-                    (
-                        bind_success,
-                        bind_roles,
-                        bind_remove_roles,
-                        bind_explanations,
-                    ) = await self.check_bind_for(
-                        guild["roles"], roblox_account, bind_type, bind_id, **role_bind, **bind_data
+                    user_binds["required" if bind_required else "optional"].append(
+                        [bind_data, append_roles, remove_roles, bind_data.get("nickname")]
                     )
-                except RuntimeError:
-                    return json({"success": False, "error": e}, status=400)
-
-                if bind_explanations:
-                    user_binds["explanations"]["success"] += bind_explanations["success"]
-                    user_binds["explanations"]["failure"] += bind_explanations["failure"]
-
-            if bind_success:
-                append_roles = list(
-                    criteria_add_roles or bind_roles
-                )  # whether we append all roles from the criteria or just from the one bind
-                remove_roles = list(
-                    criteria_remove_roles or bind_remove_roles
-                )  # whether we append all roles from the criteria or just from the one bind
-
-                user_binds["required" if bind_required else "optional"].append(
-                    [bind_data, append_roles, remove_roles, bind_data.get("nickname")]
-                )
 
         # for when they didn't save their own [un]verified roles
         has_verified_role, has_unverified_role = self.has_custom_verified_roles(role_binds)
@@ -291,7 +294,7 @@ class Route:
             # no? then we can check for the default [un]verified roles
             verified_role, unverified_role = await self.get_default_verified_role(guild)
 
-            if not has_verified_role and verified_role and roblox_account:
+            if not has_verified_role and verified_role and roblox_account and not is_restricted:
                 user_binds["required"].append(
                     [
                         {"type": "verified"},
@@ -303,7 +306,7 @@ class Route:
                     ]
                 )
 
-            if not has_unverified_role and unverified_role and not roblox_account:
+            if not has_unverified_role and unverified_role and (not roblox_account or is_restricted):
                 user_binds["required"].append(
                     [
                         {"type": "unverified"},

@@ -46,7 +46,9 @@ class Route:
         if template == "{disable-nicknaming}":
             return json({"success": True, "nickname": None})
 
-        if roblox_account:
+        is_restricted = json_body.get("restricted", False)
+
+        if roblox_account and not is_restricted:
             roblox_username = roblox_account.get("name")
             roblox_display_name = roblox_account.get("displayName")
 
@@ -87,7 +89,7 @@ class Route:
                 .replace("group-rank", str(group_rank))
             )
         else:
-            # Unverified users
+            # Unverified &/or restricted users
             if not template:
                 template: str | None = (
                     await fetch_guild_data(str(guild_id), "unverifiedNickname")
