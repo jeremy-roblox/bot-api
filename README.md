@@ -1,3 +1,6 @@
+:bangbang: | WARNING: This repository has been replaced with our [monorepo repository](https://github.com/bloxlink/bot-apis). 
+:---: | :---
+
 # Bloxlink Bot API
 API with common functions for the Guilded and Discord bot
 
